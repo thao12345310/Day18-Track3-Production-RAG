@@ -39,7 +39,10 @@ class CrossEncoderReranker:
             except ImportError:
                 pass
 
-            self._model = FlagReranker(self.model_name, use_fp16=use_fp16)
+            model = FlagReranker(self.model_name, use_fp16=use_fp16)
+            # Validate that scoring actually works (catches transformers incompatibility)
+            model.compute_score([("test", "test")])
+            self._model = model
             self._backend = "flag"
             return self._model
         except Exception:
@@ -49,7 +52,10 @@ class CrossEncoderReranker:
         try:
             from sentence_transformers import CrossEncoder
 
-            self._model = CrossEncoder(self.model_name)
+            model = CrossEncoder(self.model_name)
+            # Validate that prediction works
+            model.predict([("test", "test")])
+            self._model = model
             self._backend = "sentence_transformers"
             return self._model
         except Exception:

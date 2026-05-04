@@ -1,0 +1,110 @@
+{
+  "aggregate": {
+    "faithfulness": 0.7866666666666666,
+    "answer_relevancy": 0.40663414333437875,
+    "context_precision": 0.8179166666454618,
+    "context_recall": 0.6833333333333333
+  },
+  "num_questions": 20,
+  "failures": [
+    {
+      "question": "Lợi nhuận gộp trong báo cáo tài chính được tính như thế nào?",
+      "avg_score": 0.0,
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Báo cáo tài chính gồm những thành phần nào?",
+      "avg_score": 0.0833,
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Tổng tài sản của công ty bao gồm những khoản mục nào?",
+      "avg_score": 0.125,
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Quy trình xử lý dữ liệu cá nhân theo Nghị định 13 gồm những bước nào?",
+      "avg_score": 0.201,
+      "worst_metric": "faithfulness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "diagnosis": "LLM hallucinating",
+      "suggested_fix": "Tighten prompt, lower temperature"
+    },
+    {
+      "question": "Doanh thu thuần của công ty trong kỳ báo cáo là bao nhiêu?",
+      "avg_score": 0.6067,
+      "worst_metric": "context_precision",
+      "score": 0.0,
+      "threshold": 0.75,
+      "diagnosis": "Too many irrelevant chunks",
+      "suggested_fix": "Add reranking or metadata filter"
+    },
+    {
+      "question": "Nguyên tắc bảo vệ dữ liệu cá nhân bao gồm những gì?",
+      "avg_score": 0.6232,
+      "worst_metric": "context_recall",
+      "score": 0.0,
+      "threshold": 0.75,
+      "diagnosis": "Missing relevant chunks",
+      "suggested_fix": "Improve chunking or add BM25"
+    },
+    {
+      "question": "Nghĩa vụ của bên kiểm soát dữ liệu cá nhân là gì?",
+      "avg_score": 0.7095,
+      "worst_metric": "answer_relevancy",
+      "score": 0.3381,
+      "threshold": 0.8,
+      "diagnosis": "Answer doesn't match question",
+      "suggested_fix": "Improve prompt template"
+    },
+    {
+      "question": "Trách nhiệm của tổ chức khi xảy ra sự cố vi phạm dữ liệu cá nhân là gì?",
+      "avg_score": 0.7296,
+      "worst_metric": "context_recall",
+      "score": 0.5,
+      "threshold": 0.75,
+      "diagnosis": "Missing relevant chunks",
+      "suggested_fix": "Improve chunking or add BM25"
+    },
+    {
+      "question": "Thời hạn lưu trữ dữ liệu cá nhân được quy định như thế nào?",
+      "avg_score": 0.75,
+      "worst_metric": "answer_relevancy",
+      "score": 0.0,
+      "threshold": 0.8,
+      "diagnosis": "Answer doesn't match question",
+      "suggested_fix": "Improve prompt template"
+    },
+    {
+      "question": "Bên xử lý dữ liệu cá nhân có nghĩa vụ gì?",
+      "avg_score": 0.7729,
+      "worst_metric": "answer_relevancy",
+      "score": 0.4249,
+      "threshold": 0.8,
+      "diagnosis": "Answer doesn't match question",
+      "suggested_fix": "Improve prompt template"
+    }
+  ],
+  "latency_breakdown": {
+    "m1_chunking": 0.0,
+    "m5_enrichment": 0.01,
+    "m2_indexing": 53.5,
+    "m3_reranker_load": 16.53,
+    "query_all": 1052.44,
+    "m4_ragas": 193.87
+  },
+  "total_latency_s": 1316.35
+}

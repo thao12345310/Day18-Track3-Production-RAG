@@ -119,7 +119,14 @@ class DenseSearch:
 
     def __init__(self) -> None:
         from qdrant_client import QdrantClient
-        self.client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+        # Try connecting to Qdrant server; fall back to in-memory if unavailable
+        try:
+            client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=3)
+            client.get_collections()  # test connection
+            self.client = client
+        except Exception:
+            print("  ⚠️  Qdrant server not reachable, using in-memory mode")
+            self.client = QdrantClient(":memory:")
         self._encoder = None
 
     def _get_encoder(self):
@@ -177,9 +184,9 @@ class DenseSearch:
             List SearchResult sorted by cosine similarity descending.
         """
         query_vector = self._get_encoder().encode(query).tolist()
-        hits = self.client.search(
+        response = self.client.query_points(
             collection_name=collection,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
         )
         return [
@@ -189,7 +196,7 @@ class DenseSearch:
                 metadata={k: v for k, v in hit.payload.items() if k != "text"},
                 method="dense",
             )
-            for hit in hits
+            for hit in response.points
         ]
 
 
