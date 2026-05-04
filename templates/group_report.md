@@ -7,10 +7,10 @@
 
 | Tên | Module | Hoàn thành | Tests pass |
 |-----|--------|-----------|-----------|
-| | M1: Chunking | ☐ | /8 |
-| | M2: Search | ☐ | /5 |
-| | M3: Rerank | ☐ | /5 |
-| | M4: Eval | ☐ | /4 |
+| Nguyen Viet Quang | M1: Chunking | ☐ | /8 |
+| Pham Thanh Tung | M2: Hybrid Search | ☐ | /5 |
+| Mai Phi Hieu | M3: Reranking | ☐ | /5 |
+| Duong Phuong Thao | M4: Evaluation | ☐ | /4 |
 
 ## Kết quả
 
