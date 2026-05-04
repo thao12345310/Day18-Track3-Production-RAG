@@ -7,10 +7,10 @@
 
 | Tên | Module | Hoàn thành | Tests pass |
 |-----|--------|-----------|-----------|
-| Thảo | M1: Chunking | ☑ | 8/8 |
-| Thảo | M2: Hybrid Search | ☑ | 5/5 |
-| Thảo | M3: Reranking | ☑ | 5/5 |
-| Thảo | M4: Evaluation | ☑ | 4/4 |
+| Nguyen Viet Quang | M1: Chunking | ☑ | 8/8 |
+| Pham Thanh Tung | M2: Hybrid Search | ☑ | 5/5 |
+| Mai Phi Hieu | M3: Reranking | ☑ | 5/5 |
+| Duong Phuong Thao | M4: Evaluation | ☑ | 4/4 |
 
 **Tổng tests:** 37/37 passed ✓
 
