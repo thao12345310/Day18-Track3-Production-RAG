@@ -2,6 +2,7 @@
 
 import os, sys, json
 from dataclasses import dataclass
+from statistics import mean
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import TEST_SET_PATH
@@ -27,41 +28,194 @@ def load_test_set(path: str = TEST_SET_PATH) -> list[dict]:
 
 def evaluate_ragas(questions: list[str], answers: list[str],
                    contexts: list[list[str]], ground_truths: list[str]) -> dict:
-    """Run RAGAS evaluation."""
-    # TODO: Implement RAGAS evaluation
-    # 1. from ragas import evaluate
-    #    from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall
-    #    from datasets import Dataset
-    # 2. dataset = Dataset.from_dict({
-    #        "question": questions, "answer": answers,
-    #        "contexts": contexts, "ground_truth": ground_truths,
-    #    })
-    # 3. result = evaluate(dataset, metrics=[faithfulness, answer_relevancy,
-    #                                        context_precision, context_recall])
-    # 4. df = result.to_pandas()
-    # 5. per_question = [EvalResult(question=row.question, ...) for _, row in df.iterrows()]
-    # 6. Return {"faithfulness": float, "answer_relevancy": float,
-    #            "context_precision": float, "context_recall": float,
-    #            "per_question": per_question}
-    return {"faithfulness": 0.0, "answer_relevancy": 0.0,
-            "context_precision": 0.0, "context_recall": 0.0, "per_question": []}
+    """Run RAGAS evaluation on provided QA pairs.
+
+    Uses ragas 0.4.3 API with EvaluationDataset + SingleTurnSample.
+    Requires OPENAI_API_KEY in environment for LLM-based metrics.
+
+    Args:
+        questions: List of user questions.
+        answers: List of generated answers.
+        contexts: List of retrieved context lists (one per question).
+        ground_truths: List of reference/ground-truth answers.
+
+    Returns:
+        Dict with aggregate scores for 4 metrics + per_question EvalResult list.
+    """
+    from ragas import evaluate
+    from ragas.metrics import (
+        Faithfulness,
+        AnswerRelevancy,
+        LLMContextPrecisionWithReference,
+        LLMContextRecall,
+    )
+    from ragas import EvaluationDataset
+    from ragas.dataset_schema import SingleTurnSample
+    from ragas.llms import LangchainLLMWrapper
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+    # --- Build evaluation dataset ---
+    samples = []
+    for q, a, ctx, gt in zip(questions, answers, contexts, ground_truths):
+        samples.append(
+            SingleTurnSample(
+                user_input=q,
+                response=a,
+                retrieved_contexts=ctx,
+                reference=gt,
+            )
+        )
+    dataset = EvaluationDataset(samples=samples)
+
+    # --- Configure LLM & embeddings for ragas ---
+    llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o-mini", temperature=0))
+    embeddings = LangchainEmbeddingsWrapper(OpenAIEmbeddings(model="text-embedding-3-small"))
+
+    # --- Define metrics ---
+    metrics = [
+        Faithfulness(llm=llm),
+        AnswerRelevancy(llm=llm, embeddings=embeddings),
+        LLMContextPrecisionWithReference(llm=llm),
+        LLMContextRecall(llm=llm),
+    ]
+
+    # --- Run evaluation ---
+    result = evaluate(
+        dataset=dataset,
+        metrics=metrics,
+        raise_exceptions=False,
+    )
+
+    # --- Extract results ---
+    df = result.to_pandas()
+
+    # Map ragas column names to our standard metric names
+    col_map = {
+        "faithfulness": "faithfulness",
+        "answer_relevancy": "answer_relevancy",
+        "llm_context_precision_with_reference": "context_precision",
+        "context_recall": "context_recall",
+        "llm_context_recall": "context_recall",
+    }
+
+    # Detect actual column names present in the dataframe
+    metric_cols = {}
+    for ragas_col, our_col in col_map.items():
+        if ragas_col in df.columns:
+            metric_cols[our_col] = ragas_col
+
+    # Build per-question results
+    per_question = []
+    for idx, row in df.iterrows():
+        f_score = float(row.get(metric_cols.get("faithfulness", ""), 0.0) or 0.0)
+        ar_score = float(row.get(metric_cols.get("answer_relevancy", ""), 0.0) or 0.0)
+        cp_score = float(row.get(metric_cols.get("context_precision", ""), 0.0) or 0.0)
+        cr_score = float(row.get(metric_cols.get("context_recall", ""), 0.0) or 0.0)
+
+        per_question.append(
+            EvalResult(
+                question=questions[idx],
+                answer=answers[idx],
+                contexts=contexts[idx],
+                ground_truth=ground_truths[idx],
+                faithfulness=f_score,
+                answer_relevancy=ar_score,
+                context_precision=cp_score,
+                context_recall=cr_score,
+            )
+        )
+
+    # Compute aggregate scores
+    agg = {
+        "faithfulness": mean([r.faithfulness for r in per_question]) if per_question else 0.0,
+        "answer_relevancy": mean([r.answer_relevancy for r in per_question]) if per_question else 0.0,
+        "context_precision": mean([r.context_precision for r in per_question]) if per_question else 0.0,
+        "context_recall": mean([r.context_recall for r in per_question]) if per_question else 0.0,
+        "per_question": per_question,
+    }
+    return agg
 
 
 def failure_analysis(eval_results: list[EvalResult], bottom_n: int = 10) -> list[dict]:
-    """Analyze bottom-N worst questions using Diagnostic Tree."""
-    # TODO: Implement failure analysis
-    # 1. For each result, avg_score = mean(faithfulness, answer_relevancy, context_precision, context_recall)
-    # 2. Sort by avg_score ascending → take bottom_n
-    # 3. For each failed question:
-    #    worst_metric = metric with lowest score
-    #    Map to diagnosis:
-    #      faithfulness < 0.85     → diagnosis="LLM hallucinating", fix="Tighten prompt, lower temperature"
-    #      context_recall < 0.75   → diagnosis="Missing relevant chunks", fix="Improve chunking or add BM25"
-    #      context_precision < 0.75 → diagnosis="Too many irrelevant chunks", fix="Add reranking or metadata filter"
-    #      answer_relevancy < 0.80 → diagnosis="Answer doesn't match question", fix="Improve prompt template"
-    # 4. Return [{"question": str, "worst_metric": str, "score": float,
-    #             "diagnosis": str, "suggested_fix": str}]
-    return []
+    """Analyze bottom-N worst questions using Diagnostic Tree.
+
+    For each EvalResult, computes avg score across 4 metrics, sorts ascending,
+    takes the bottom_n, then maps the worst metric to a diagnosis + suggested fix.
+
+    Args:
+        eval_results: List of per-question EvalResult objects.
+        bottom_n: Number of worst-performing questions to analyze.
+
+    Returns:
+        List of dicts with question, worst_metric, score, diagnosis, suggested_fix.
+    """
+    if not eval_results:
+        return []
+
+    # --- Diagnostic Tree mapping ---
+    diagnostic_tree = {
+        "faithfulness": {
+            "threshold": 0.85,
+            "diagnosis": "LLM hallucinating",
+            "suggested_fix": "Tighten prompt, lower temperature",
+        },
+        "context_recall": {
+            "threshold": 0.75,
+            "diagnosis": "Missing relevant chunks",
+            "suggested_fix": "Improve chunking or add BM25",
+        },
+        "context_precision": {
+            "threshold": 0.75,
+            "diagnosis": "Too many irrelevant chunks",
+            "suggested_fix": "Add reranking or metadata filter",
+        },
+        "answer_relevancy": {
+            "threshold": 0.80,
+            "diagnosis": "Answer doesn't match question",
+            "suggested_fix": "Improve prompt template",
+        },
+    }
+
+    # 1. Compute avg score for each result
+    scored = []
+    for r in eval_results:
+        avg_score = mean([r.faithfulness, r.answer_relevancy,
+                          r.context_precision, r.context_recall])
+        scored.append((avg_score, r))
+
+    # 2. Sort ascending by avg_score → take bottom_n
+    scored.sort(key=lambda x: x[0])
+    bottom = scored[:bottom_n]
+
+    # 3. For each failed question, find worst metric and map to diagnosis
+    failures = []
+    for avg_score, r in bottom:
+        metric_scores = {
+            "faithfulness": r.faithfulness,
+            "answer_relevancy": r.answer_relevancy,
+            "context_precision": r.context_precision,
+            "context_recall": r.context_recall,
+        }
+
+        # Find the metric with the lowest score
+        worst_metric = min(metric_scores, key=metric_scores.get)
+        worst_score = metric_scores[worst_metric]
+
+        # Map to diagnosis from diagnostic tree
+        diag = diagnostic_tree[worst_metric]
+
+        failures.append({
+            "question": r.question,
+            "avg_score": round(avg_score, 4),
+            "worst_metric": worst_metric,
+            "score": round(worst_score, 4),
+            "threshold": diag["threshold"],
+            "diagnosis": diag["diagnosis"],
+            "suggested_fix": diag["suggested_fix"],
+        })
+
+    return failures
 
 
 def save_report(results: dict, failures: list[dict], path: str = "ragas_report.json"):
